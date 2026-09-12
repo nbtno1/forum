@@ -32,5 +32,7 @@
       <% end %>
     </ul>
   </nav>
-  <p class='powered-by-link'><%= t 'powered_by_html' %></p>
+  <% if SiteSetting.enable_powered_by_discourse %>
+    <p class='powered-by-link'><%= t 'powered_by_html' %></p>
+  <% end %>
 </footer>
