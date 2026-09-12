@@ -1,138 +1,254 @@
-<a href="https://www.discourse.org/">
-  <img src="images/discourse-readme-logo.png" width="300px">
-</a>
+# Hướng dẫn Cài đặt & Triển khai Diễn đàn Công nghệ KTNN (Discourse)
 
-The online home for your community. 
+Tài liệu này hướng dẫn chi tiết cách thiết lập môi trường phát triển cục bộ (**macOS**, **Windows**) và triển khai Production (**Linux**), cùng giải pháp tự động hóa "1 câu lệnh".
 
-<img width="1920" height="1135" alt="github-readme" src="https://github.com/user-attachments/assets/abaaf30f-0cfb-4505-a530-6f8e5a43d24b" />
+---
 
-> You can self-host Discourse on your own infrastructure. But if you'd rather skip the setup, maintenance, and server management, we offer official Discourse hosting.
->
-> 👉 Learn more about [Discourse hosting](https://discourse.org/pricing)
+## ⚡ CÂU HỎI: Có giải pháp nào "chỉ chạy 1 câu lệnh là tự động cài full cấu phần" không?
 
-Discourse is a 100% open-source community platform for those who want complete control over how and where their site is run.
+> **CÓ! Giải pháp chuẩn công nghiệp chính là DOCKER & CONTAINERIZATION.**
 
-Our platform has been battle-tested for over a decade and continues to evolve to meet users’ needs for a powerful community platform. 
+Discourse là một hệ thống fullstack phức tạp (Ruby, PostgreSQL, Redis, pgvector, ImageMagick, Node, pnpm). Để không phải cài đặt thủ công từng thứ trên máy tính cá nhân hay server, Discourse đã thiết kế sẵn giải pháp container:
 
-**With Discourse, you can:**
+---
 
-* 💬 **Create discussion topics** to foster meaningful conversations.
+## 🐳 HƯỚNG DẪN CHẠY BẰNG DOCKER (CHO MÁY LOCAL DEV)
 
-* ⚡️ **Connect in real-time** with built-in chat.
-  
-* 🎨 **Customize your experience** with an ever-growing selection of official and community themes.
+Bạn chỉ cần cài đặt **[Docker Desktop](https://www.docker.com/products/docker-desktop/)** (hỗ trợ cả Windows và macOS). Sau khi Docker Desktop đang chạy, chọn 1 trong 3 cách sau:
 
-* 🤖 **Enhance your community** with plugins, from chatbots powered by [Discourse AI](https://meta.discourse.org/t/discourse-ai/259214) to advanced tools like SQL analysis with the [Data Explorer](https://meta.discourse.org/t/discourse-data-explorer/32566) plugin.
+### Cách 1: Chạy bằng Docker Compose (Đơn giản nhất - 1 Câu Lệnh) ⚡
+Dự án đã có sẵn file [`docker-compose.yml`](file:///Users/macbook/Desktop/forum/docker-compose.yml). Mở Terminal tại thư mục dự án và chạy:
 
-To learn more, visit [discourse.org](https://www.discourse.org/) and join our support community at [meta.discourse.org](https://meta.discourse.org/).
+```bash
+docker compose up
+```
 
+* **Cơ chế hoạt động:**
+  * Docker sẽ tự động tải image `discourse/discourse_dev` chính thức từ Docker Hub (bên trong đã cài sẵn trọn bộ PostgreSQL, Redis, Ruby 3.4, Node, pnpm).
+  * Tự động khởi chạy database, redis và chạy server `bin/dev`.
+  * Thư mục mã nguồn trên máy bạn được đồng bộ trực tiếp vào container (`live-mount`), bạn sửa code ở máy thật thì web cập nhật ngay lập tức.
+* **Truy cập:** Mở trình duyệt vào **`http://localhost:3000/`**.
+* **Dừng container:** Bấm `Ctrl + C` hoặc mở tab terminal khác gõ: `docker compose down`.
 
-Here are just a few of the incredible communities using Discourse: 
+---
 
-![discourse-communities](https://github.com/user-attachments/assets/a79b5d56-7748-4f6d-8a2d-daa950366fcc)
+### Cách 2: Chạy bằng VS Code Dev Containers (Chuẩn của Discourse Core Team) 💻
+1. Cài đặt extension **Dev Containers** trong VS Code (Extension ID: `ms-vscode-remote.remote-containers`).
+2. Mở thư mục `forum` bằng VS Code.
+3. Khi có thông báo ở góc phải: *"Folder contains a Dev Container configuration file. Reopen to folder in a container?"* ➔ Bấm **Reopen in Container**.
+   *(Hoặc bấm phím `F1` ➔ gõ `Dev Containers: Reopen in Container`).*
+4. VS Code sẽ tự động dựng container theo cấu hình [`.devcontainer/devcontainer.json`](file:///Users/macbook/Desktop/forum/.devcontainer/devcontainer.json).
+5. Sau khi vào trong container, mở Terminal tích hợp của VS Code và gõ:
+   ```bash
+   bin/dev
+   ```
+   Truy cập: **`http://localhost:3000/`**.
 
-👉 [Discover more communities using Discourse](https://discover.discourse.org/)
+---
 
+### Cách 3: Chạy bằng Docker CLI thuần (Không cần compose)
+```bash
+# 1. Khởi chạy container ngầm và mount thư mục hiện tại vào
+docker run -d --name discourse_dev \
+  -p 3000:3000 -p 9292:9292 \
+  -v "$(pwd)":/workspace/discourse \
+  -w /workspace/discourse \
+  discourse/discourse_dev:release \
+  /sbin/boot
 
-## Development
+# 2. Chạy server phát triển
+docker exec -it discourse_dev bin/dev
+```
 
-To get your environment set up, follow one of the setup guides:
+---
 
-- Docker
-    - [Dev Container in VS Code](https://meta.discourse.org/t/336366) (recommended)
-    - [CLI](https://meta.discourse.org/t/102009)
-- [macOS](https://meta.discourse.org/t/15772)
-- [Ubuntu/Debian](https://meta.discourse.org/t/14727)
-- [Windows](https://meta.discourse.org/t/75149)
+## PHẦN 1: Cài đặt Môi trường Phát triển (Development)
 
-Before you get started, ensure you have the following minimum versions: [Ruby 3.4+](https://www.ruby-lang.org/en/downloads/), [PostgreSQL 15](https://www.postgresql.org/download/), [Redis 7](https://redis.io/download).
+### A. Dành cho macOS (Chạy Native)
 
-For more information, check out [the Developer Documentation](https://meta.discourse.org/c/documentation/developer-guides/56).
+#### 1. Cài đặt các công cụ nền tảng qua Homebrew:
+```bash
+# Cài đặt Database, Cache, Ruby 3.4 và các công cụ xử lý ảnh
+brew install postgresql@17 redis ruby@3.4 pgvector imagemagick coreutils oxipng pngquant jpegoptim jhead
 
-## Setting up Discourse
+# Cài đặt pnpm quản lý frontend
+npm install -g pnpm
+```
 
-If you want to set up a Discourse forum for production use, see our [**Discourse Install Guide**](docs/INSTALL.md).
+#### 2. Khởi chạy Database & Cache:
+```bash
+# Khởi động PostgreSQL và Redis
+brew services start postgresql@17
+brew services start redis
 
-If you're looking for official hosting, see [discourse.org/pricing](https://www.discourse.org/pricing/).
+# Cấp quyền thực thi cho module Redis (trên macOS)
+chmod +x /usr/local/opt/redis/lib/redis/modules/*.so 2>/dev/null
+brew services restart redis
 
-## Requirements
+# Tạo user Database theo tên tài khoản Mac
+createuser -s $(whoami)
 
-Discourse supports the **latest, stable releases** of all major browsers and platforms:
+# Đảm bảo extension pgvector sẵn sàng trong PostgreSQL 17
+cp /usr/local/share/postgresql@17/extension/vector* /usr/local/opt/postgresql@17/share/postgresql/extension/ 2>/dev/null
+cp /usr/local/lib/postgresql@17/vector.dylib /usr/local/opt/postgresql@17/lib/postgresql/vector.dylib 2>/dev/null
+```
 
-| Browsers              | Tablets      | Phones       |
-| --------------------- | ------------ | ------------ |
-| Apple Safari          | iPadOS       | iOS          |
-| Google Chrome         | Android      | Android      |
-| Microsoft Edge        |              |              |
-| Mozilla Firefox       |              |              |
+#### 3. Cấu hình biến môi trường cố định:
+Mở Terminal và thêm vào `~/.zshrc`:
+```bash
+echo 'export PATH="/usr/local/opt/ruby@3.4/bin:/usr/local/opt/postgresql@17/bin:$PATH"' >> ~/.zshrc
+echo 'export LC_ALL="en_US.UTF-8"' >> ~/.zshrc
+echo 'export LANG="en_US.UTF-8"' >> ~/.zshrc
+source ~/.zshrc
+```
 
-Additionally, we aim to support Safari on iOS 16.4+.
+#### 4. Cài đặt thư viện dự án & Khởi tạo Database:
+```bash
+cd /Users/macbook/Desktop/forum
 
-## Built With
+# Cài đặt Ruby Gems
+bundle install
 
-- [Ruby on Rails](https://github.com/rails/rails) &mdash; Our back end API is a Rails app. It responds to requests RESTfully in JSON.
-- [Ember.js](https://github.com/emberjs/ember.js) &mdash; Our front end is an Ember.js app that communicates with the Rails API.
-- [PostgreSQL](https://www.postgresql.org/) &mdash; Our main data store is in Postgres.
-- [Redis](https://redis.io/) &mdash; We use Redis as a cache and for transient data.
-- [BrowserStack](https://www.browserstack.com/) &mdash; We use BrowserStack to test on real devices and browsers.
+# Cài đặt Frontend packages
+pnpm install
 
-Plus *lots* of Ruby Gems, a complete list of which is at [/main/Gemfile](https://github.com/discourse/discourse/blob/main/Gemfile).
+# Tạo và nạp cấu trúc Database
+bundle exec rake db:create db:migrate
+```
 
-## Contributing
+#### 5. Khởi động Diễn đàn:
+```bash
+bin/dev
+```
+Truy cập: **http://localhost:3000/**
 
-[![Build Status](https://github.com/discourse/discourse/actions/workflows/tests.yml/badge.svg)](https://github.com/discourse/discourse/actions)
+---
 
-Discourse is **100% free** and **open source**. We encourage and support an active, healthy community that
-accepts contributions from the public &ndash; including you!
+### B. Dành cho Windows (Sử dụng WSL2 Ubuntu)
 
-Before contributing to Discourse:
+> **Lưu ý quan trọng cho Windows:**
+> Discourse và Ruby on Rails **không thể chạy native trực tiếp trên Windows CMD/PowerShell** do yêu cầu các thư viện socket POSIX và tiến trình Unix (Puma, Pitchfork). Giải pháp chuẩn và bắt buộc trên Windows là sử dụng **WSL2 (Windows Subsystem for Linux - Ubuntu)**.
 
-1. Please read the complete mission statements on [**discourse.org**](https://www.discourse.org). Yes we actually believe this stuff; you should too.
-2. Read and sign the [**Electronic Discourse Forums Contribution License Agreement**](https://www.discourse.org/cla).
-3. Dig into [**CONTRIBUTING.MD**](CONTRIBUTING.md), which covers submitting bugs, requesting new features, preparing your code for a pull request, etc.
-4. Always strive to collaborate [with mutual respect](https://github.com/discourse/discourse/blob/main/docs/code-of-conduct.md).
-5. Not sure what to work on? [**We've got some ideas.**](https://meta.discourse.org/t/so-you-want-to-help-out-with-discourse/3823)
+#### 1. Cài đặt WSL2 (nếu chưa có):
+Mở PowerShell (quyền Administrator) và chạy:
+```powershell
+wsl --install -d Ubuntu
+```
+*(Khởi động lại máy nếu Windows yêu cầu, sau đó mở ứng dụng **Ubuntu** lên).*
 
+#### 2. Cài đặt các gói phụ thuộc trên Ubuntu (WSL2):
+Chạy trong terminal Ubuntu:
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y git curl build-essential libpq-dev libssl-dev libreadline-dev \
+  zlib1g-dev libyaml-dev libffi-dev postgresql postgresql-contrib postgresql-server-dev-all \
+  redis-server imagemagick optipng jhead jpegoptim pngquant
+```
 
-We look forward to seeing your pull requests!
+#### 3. Cài đặt Node.js & pnpm:
+```bash
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo npm install -g pnpm
+```
 
-## Security
+#### 4. Cài đặt Ruby 3.4 (qua rbenv):
+```bash
+git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+echo 'export PATH="$HOME/.rbenv/bin:$PATH"' >> ~/.bashrc
+echo 'eval "$(rbenv init -)"' >> ~/.bashrc
+git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+source ~/.bashrc
 
-We take security very seriously at Discourse; all our code is 100% open source and peer reviewed. Please read [our security guide](https://github.com/discourse/discourse/blob/main/docs/SECURITY.md) for an overview of security measures in Discourse, or if you wish to report a security issue.
+rbenv install 3.4.2
+rbenv global 3.4.2
+gem install bundler
+```
 
-Security fixes are listed in the [release notes](https://releases.discourse.org) for each version.
+#### 5. Cài đặt extension pgvector cho PostgreSQL:
+```bash
+cd /tmp
+git clone --branch v0.8.0 https://github.com/pgvector/pgvector.git
+cd pgvector
+make && sudo make install
+```
 
-## The Discourse Team
+#### 6. Khởi chạy dịch vụ & tạo user Database:
+```bash
+sudo service postgresql start
+sudo service redis-server start
 
-The original Discourse code contributors can be found in [**AUTHORS.MD**](docs/AUTHORS.md). For a complete list of the many individuals that contributed to the design and implementation of Discourse, please refer to [the official Discourse blog](https://blog.discourse.org/2013/02/the-discourse-team/) and [GitHub's list of contributors](https://github.com/discourse/discourse/contributors).
+# Tạo role PostgreSQL bằng tên tài khoản Ubuntu của bạn
+sudo -u postgres createuser -s $(whoami)
+```
 
-## Copyright / License
+#### 7. Khởi tạo dự án & Chạy:
+```bash
+cd /duong-dan-den/forum
+bundle install
+pnpm install
+bundle exec rake db:create db:migrate
+bin/dev
+```
+Truy cập: **http://localhost:3000/** từ trình duyệt Windows.
 
-Copyright 2014 - 2026 Civilized Discourse Construction Kit, Inc.
+---
 
-Licensed under the GNU General Public License Version 2.0 (or later);
-you may not use this work except in compliance with the License.
-You may obtain a copy of the License in the LICENSE file, or at:
+## PHẦN 2: Triển khai Lên Server Production (Linux Ubuntu/Debian)
 
-   https://www.gnu.org/licenses/old-licenses/gpl-2.0.txt
+Trên môi trường Production thực tế (VPS / Cloud Server như DigitalOcean, AWS, GCP, Viettel Cloud, VNPT,...), Discourse **chỉ hỗ trợ phương pháp container hóa Docker** để đảm bảo bảo mật, sao lưu tự động và nâng cấp chỉ bằng 1 cú nhấp chuột.
 
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
+### Yêu cầu cấu hình Server tối thiểu:
+* **Hệ điều hành:** Ubuntu 22.04 / 24.04 LTS (64-bit).
+* **Phần cứng:** Tối thiểu 2 CPU Core, 2 GB RAM (hoặc 1 GB RAM + 2 GB Swap file).
+* **Tên miền (Domain):** Đã trỏ bản ghi A về địa chỉ IP của VPS (ví dụ: `diendan.ktnn.gov.vn`).
+* **Cổng mở:** 80 (HTTP) và 443 (HTTPS).
 
-Discourse logo and “Discourse Forum” ®, Civilized Discourse Construction Kit, Inc.
+---
 
-## Accessibility
+### Các bước Triển khai "1 Chạm" (Official Discourse Docker):
 
-To guide our ongoing effort to build accessible software we follow the [W3C’s Web Content Accessibility Guidelines (WCAG)](https://www.w3.org/TR/WCAG21/). If you'd like to report an accessibility issue that makes it difficult for you to use Discourse, email accessibility@discourse.org. For more information visit [discourse.org/accessibility](https://discourse.org/accessibility).
+#### Bước 1: Cài đặt Docker trên Server Linux:
+```bash
+curl -fsSL https://get.docker.com | sh
+```
 
-## Dedication
+#### Bước 2: Tải bộ cài đặt Discourse chính thức:
+```bash
+sudo -s
+git clone https://github.com/discourse/discourse_docker.git /var/discourse
+cd /var/discourse
+chmod 700 containers
+```
 
-Discourse is built with [love, Internet style.](https://www.youtube.com/watch?v=Xe1TZaElTAs)
+#### Bước 3: Chạy trình cài đặt tự động (`discourse-setup`):
+```bash
+./discourse-setup
+```
 
-For over a decade, our [amazing community](https://meta.discourse.org/) has helped shape Discourse into what it is today. Your support, feedback, and contributions have been invaluable in making Discourse a powerful and versatile platform.
+Trình cài đặt sẽ tự động hỏi bạn các thông tin cơ bản:
+1. **Hostname for your Discourse?** ➔ Điền domain (ví dụ: `diendan.ktnn.gov.vn`).
+2. **Email address for admin account?** ➔ Điền email admin (ví dụ: `admin@ktnn.gov.vn`).
+3. **SMTP server address?** ➔ Địa chỉ mail server gửi thông báo (ví dụ: `smtp.gmail.com` hoặc server mail nội bộ).
+4. **SMTP user name & password?** ➔ Thông tin đăng nhập SMTP.
+5. **Let's Encrypt account email?** ➔ Email nhận thông báo chứng chỉ bảo mật SSL miễn phí.
 
-We’re deeply grateful for every feature request, bug report, and discussion that has driven Discourse forward. Thank you for being a part of this journey—we couldn’t have done it without you!
+#### Bước 4: Chờ hoàn tất!
+* Script sẽ tự động:
+  * Tải và cấu hình PostgreSQL, Redis, Nginx, Rails trong container.
+  * Tự xin chứng chỉ bảo mật SSL (HTTPS) qua Let's Encrypt.
+  * Tự khởi tạo Database và thiết lập tường lửa.
+* Sau 5–10 phút, bạn chỉ cần mở trình duyệt vào **`https://diendan.ktnn.gov.vn`** để hoàn tất bước chào mừng.
 
+---
+
+## PHẦN 3: Các Lệnh Quản Trị Thường Dùng
+
+| Thao tác | Môi trường Dev (Local) | Môi trường Production (Linux Docker) |
+|---|---|---|
+| **Khởi động server** | `bin/dev` | `cd /var/discourse && ./launcher start app` |
+| **Dừng server** | `Ctrl + C` hoặc `kill -9 $(lsof -ti:3000)` | `cd /var/discourse && ./launcher stop app` |
+| **Khởi động lại** | Chạy lại `bin/dev` | `cd /var/discourse && ./launcher restart app` |
+| **Nâng cấp phiên bản** | `git pull && bundle install && pnpm install && rake db:migrate` | `cd /var/discourse && ./launcher rebuild app` |
+| **Xem log hệ thống** | In trực tiếp ra màn hình Terminal | `cd /var/discourse && ./launcher logs app` |
+| **Tạo tài khoản Admin** | `bundle exec rake admin:create` | `cd /var/discourse && ./launcher enter app` sau đó `rake admin:create` |
