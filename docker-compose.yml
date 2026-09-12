@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  discourse:
+    image: discourse/discourse_dev:release
+    container_name: discourse_dev
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "9292:9292"
+      - "8025:8025" # Mailhog xem email thử nghiệm
+    environment:
+      - RAILS_ENV=development
+      - DISCOURSE_HOSTNAME=localhost
+    volumes:
+      - .:/workspace/discourse
+      - discourse_node_modules:/workspace/discourse/node_modules
+      - discourse_pg_data:/shared/postgres_data
+      - discourse_redis_data:/shared/redis
+    working_dir: /workspace/discourse
+    # Khởi động các dịch vụ nền (Postgres, Redis) bên trong container rồi chạy dev server
+    command: >
+      bash -c "
+        sudo /sbin/boot &&
+        sleep 5 &&
+        bundle exec rake db:migrate 2>/dev/null || true &&
+        bin/dev
+      "
+
+volumes:
+  discourse_node_modules:
+  discourse_pg_data:
+  discourse_redis_data:
